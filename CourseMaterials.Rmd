@@ -1,0 +1,99 @@
+---
+title: "Sports data visualization in R"
+output: html_notebook
+---
+
+Goals for this session: 
+
+1. Intro and finding data
+2. Importing data and basic manipulations
+3. Proportion
+4. Change over time
+5. Comparisons
+6. Finishing touches
+
+### 1. Introduction and finding data
+ 
+The great thing about sports is that one, there is a ton of interest in it, and two, there's a history of keeping stats. Combine those two together, and you get a ton of data about sports online. Indeed, [the Times even wrote about the people who do it](https://www.nytimes.com/2019/02/13/sports/sean-forman-sports-reference.html) recently. That's the good news. The bad news is that the best stuff -- the really advanced metrics -- are all behind paywalls and hidden in the leagues and teams. Why? Gambling.
+
+But we can get a lot from ESPN, Sports Reference, College Football Stats, etc. And given how little sports data is being analyized and visualized by journalists, there's a wide open field.
+
+Let's look at the data we'll be working with. [These is the game logs for a single basketball team](https://www.sports-reference.com/cbb/schools/nebraska/2019-gamelogs.html). Just a random team from an outstanding midwestern university. Randomly chosen. 
+
+It has basic statistics for each game that team has played and their opponent's stats. For basketball, this is pretty basic stuff. 
+
+But how about we look at [every college basketball team and their game logs]() ... all at once. 
+
+### 2. Importing data and basic manipulations
+
+The library we're going to use today is actually a collection of libraries called the `tidyverse`. The `tidyverse` contains the three libraries we'll use: `readr`, `dplyr` and `ggplot`. In order, `readr` will read the data, `dplyr` will help us query the data and `ggplot` will visualize it. 
+
+We load it like this:
+
+```{r}
+library(tidyverse)
+```
+
+The first thing we'll do is load our dataset into a data frame. That will give us something to work with. If we have an internet connection, we'll load it like this. If not, I'll bring an updated file that we can distribute locally. The gods clearly loved us when they gave us sneakernet. 
+
+```{r}
+logs <- read_csv("https://raw.githubusercontent.com/mattwaite/SPMC350-Sports-Data-Analysis-And-Visualization/master/Data/logs.csv")
+```
+
+So what we now have is our log data. To see it, click on the blue dot next to logs in the environment tab in the upper right. That will show us what each field is called. If you double click it, it will pull up a spreadsheet-like view of it. 
+
+For each chart type, we're going to need to do some basic data analysis. For our first one, let's calculate a simple season average. For those of you who have worked with databases, this is a simple group and average. If you're a spreadsheet user, you can do this with crosstabs. 
+
+We're going to do a couple of things here. First we're going to tell R what data we're working with. Then we're going to use an operator that I find it's easiest to just think of saying And Now Do This. So we're going to give it our data, group it by the team, and then summarize it with an average. We'll talk it through. 
+
+```{r}
+logs %>% group_by(Team) %>% summarize(average_3P_attempts = mean(Team3PA))
+```
+
+If we want to see it sorted, we can add another `%>%` at the end and then use `dplyr`'s version of sort, which is arrange. 
+
+```{r}
+logs %>% group_by(Team) %>% summarize(average_3P_attempts = mean(Team3PA)) %>% arrange(desc(average_3P_attempts))
+```
+
+Now we need to save this as a new dataframe. 
+
+```{r}
+top_shooters <- logs %>% group_by(Team) %>% summarize(average_3P_attempts = mean(Team3PA)) %>% arrange(desc(average_3P_attempts))
+```
+
+### 3. Proportion
+
+The first chart we'll produce is a simple bar chart. But we have 353 teams, so it's not that simple.
+
+```{r}
+ggplot() + geom_bar(data=top_shooters, aes(x=Team, weight=average_3P_attempts))
+```
+
+That's not ... ideal. But wait, didn't we already sort this? Yes, but ggplot ignores the sort. So you have to sort it in ggplot. We do it with `reorder` which takes what you want to reorder and how you want to reorder it. 
+
+```{r}
+ggplot() + geom_bar(data=top_shooters, aes(x=reorder(Team, -average_3P_attempts), weight=average_3P_attempts))
+```
+
+Hmmm. Still not ideal. What if we just want the top teams? We can limit that with our query. 
+
+```{r}
+top_10_shooters <- logs %>% group_by(Team) %>% summarize(average_3P_attempts = mean(Team3PA)) %>% arrange(desc(average_3P_attempts)) %>% top_n(10)
+```
+
+```{r}
+ggplot() + geom_bar(data=top_10_shooters, aes(x=reorder(Team, -average_3P_attempts), weight=average_3P_attempts))
+```
+
+Hmm. Still not ideal. We could manipulate the text -- we'll do that later -- but a simple fix is to flip the coordinate plane.
+
+```{r}
+ggplot() + geom_bar(data=top_10_shooters, aes(x=reorder(Team, -average_3P_attempts), weight=average_3P_attempts)) + coord_flip()
+```
+
+### 4. Change over time 
+
+So 
+
+
