@@ -1,6 +1,8 @@
 ---
 title: "Sports data visualization in R"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 Goals for this session: 
@@ -17,7 +19,7 @@ The great thing about sports is that one, there is a ton of interest in it, and 
 
 But we can get a lot from ESPN, Sports Reference, College Football Stats, etc. And given how little sports data is being analyized and visualized by journalists, there's a wide open field.
 
-Let's look at the data we'll be working with. [These is the game logs for a single basketball team](https://www.sports-reference.com/cbb/schools/nebraska/2019-gamelogs.html). Just a random team from an outstanding midwestern university. Randomly chosen. 
+Let's look at the data we'll be working with. [These are the game logs for a single basketball team](https://www.sports-reference.com/cbb/schools/nebraska/2019-gamelogs.html). Just a random team from an outstanding midwestern university. Randomly chosen. 
 
 It has basic statistics for each game that team has played and their opponent's stats. For basketball, this is pretty basic stuff. 
 
@@ -136,20 +138,35 @@ ggplot() +
   geom_line(data=ps, aes(x=Date, y=TeamFGPCT, group=Team), color="dark blue")
 ```
 
+Better, but does it tell us much? Eh.
+
+Let's look at step charts, a form that tracks cumulative change over time. 
+
+Nebraska, at one time, was one of the best basketball teams in the Big Ten. And then, in January, it went to hell and a handbasket. You can really see it in the cumulative point differential on the season. 
+
+First we need to calculate the game differential then we need to calculate the cumulative differential for each team. We can do that in one step. 
+
 ```{r}
-big10cumulative <- big10 %>% group_by(Team) %>% mutate(fgs = cumsum(TeamFG))
+big10cumulative <- big10 %>% 
+  mutate(differential = TeamScore-OpponentScore) %>% 
+  group_by(Team) %>% 
+  mutate(totaldifferential = cumsum(differential))
 
 msc <- big10cumulative %>% filter(Team == "Michigan State Spartans")
-psc <- big10cumulative %>% filter(Team == "Penn State Nittany Lions")
+nuc <- big10cumulative %>% filter(Team == "Nebraska Cornhuskers")
 
 ```
+
+Now we can borrow from our line chart and layer these in. First we'll do the Big Ten, then Michigan State, then Nebraska. The geometry is now geom_step instead of geom_line, but the aesthetics are pretty much the same. 
 
 ```{r}
 ggplot() + 
-  geom_step(data=big10cumulative, aes(x=Date, y=fgs, group=Team), color="light grey") + 
-  geom_step(data=msc, aes(x=Date, y=fgs, group=Team), color="dark green") +
-  geom_step(data=psc, aes(x=Date, y=fgs, group=Team), color="dark blue")
+  geom_step(data=big10cumulative, aes(x=Date, y=totaldifferential, group=Team), color="light grey") + 
+  geom_step(data=msc, aes(x=Date, y=totaldifferential, group=Team), color="dark green") +
+  geom_step(data=nuc, aes(x=Date, y=totaldifferential, group=Team), color="red")
 ```
+
+Ouch. 
 
 ### 5. Finishing touches
 
@@ -157,20 +174,20 @@ There is an almost limitless number of thing we can change with ggplot to make i
 
 ```{r}
 ggplot() + 
-  geom_step(data=big10cumulative, aes(x=Date, y=fgs, group=Team), color="light grey") + 
-  geom_step(data=msc, aes(x=Date, y=fgs, group=Team), color="dark green") +
-  geom_step(data=psc, aes(x=Date, y=fgs, group=Team), color="dark blue") +
-   labs(x="Date", y="Baskets made", title="A tale of two seasons", subtitle="Michigan State and Penn State went it different directions and sit at opposite ends of the Big Ten Tournament", caption="Source: Sports-Reference.com | By Matt Waite") 
+  geom_step(data=big10cumulative, aes(x=Date, y=totaldifferential, group=Team), color="light grey") + 
+  geom_step(data=msc, aes(x=Date, y=totaldifferential, group=Team), color="dark green") +
+  geom_step(data=nuc, aes(x=Date, y=totaldifferential, group=Team), color="red") +
+   labs(x="Date", y="Score differential", title="A tale of two seasons", subtitle="Michigan State and Nebraska were neck and neck. And then the swoon happened.", caption="Source: Sports-Reference.com | By Matt Waite") 
 ```
 
 There's a designer somewhere having a conniption about this. Let's create some text heirarchy here. 
 
 ```{r}
 ggplot() + 
-  geom_step(data=big10cumulative, aes(x=Date, y=fgs, group=Team), color="light grey") + 
-  geom_step(data=msc, aes(x=Date, y=fgs, group=Team), color="dark green") +
-  geom_step(data=psc, aes(x=Date, y=fgs, group=Team), color="dark blue") +
-   labs(x="Date", y="Baskets made", title="A tale of two seasons", subtitle="Michigan State and Penn State sit at opposite ends of the Big Ten Tournament.", caption="Source: Sports-Reference.com | By Matt Waite") +
+  geom_step(data=big10cumulative, aes(x=Date, y=totaldifferential, group=Team), color="light grey") + 
+  geom_step(data=msc, aes(x=Date, y=totaldifferential, group=Team), color="dark green") +
+  geom_step(data=nuc, aes(x=Date, y=totaldifferential, group=Team), color="red") +
+   labs(x="Date", y="Score differential", title="A tale of two seasons", subtitle="Michigan State and Nebraska were neck and neck. And then the swoon happened.", caption="Source: Sports-Reference.com | By Matt Waite") +
   theme(
     plot.title = element_text(size = 16, face = "bold"),
     plot.subtitle = element_text(size=9)
@@ -181,10 +198,10 @@ Better. How about we get rid of some things. The label on the bottom isn't neede
 
 ```{r}
 ggplot() + 
-  geom_step(data=big10cumulative, aes(x=Date, y=fgs, group=Team), color="light grey") + 
-  geom_step(data=msc, aes(x=Date, y=fgs, group=Team), color="dark green") +
-  geom_step(data=psc, aes(x=Date, y=fgs, group=Team), color="dark blue") +
-   labs(x="Team", y="Baskets made", title="A tale of two seasons", subtitle="Michigan State and Penn State sit at opposite ends of the Big Ten Tournament", caption="Source: Sports-Reference.com | By Matt Waite") +
+  geom_step(data=big10cumulative, aes(x=Date, y=totaldifferential, group=Team), color="light grey") + 
+  geom_step(data=msc, aes(x=Date, y=totaldifferential, group=Team), color="dark green") +
+  geom_step(data=nuc, aes(x=Date, y=totaldifferential, group=Team), color="red") +
+   labs(x="Date", y="Score differential", title="A tale of two seasons", subtitle="Michigan State and Nebraska were neck and neck. And then the swoon happened.", caption="Source: Sports-Reference.com | By Matt Waite") +
   theme(
     plot.title = element_text(size = 16, face = "bold"),
     plot.subtitle = element_text(size=10),
