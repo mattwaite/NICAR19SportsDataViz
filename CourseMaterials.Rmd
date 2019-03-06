@@ -43,55 +43,46 @@ logs <- read_csv("https://raw.githubusercontent.com/mattwaite/SPMC350-Sports-Dat
 
 So what we now have is our log data. To see it, click on the blue dot next to logs in the environment tab in the upper right. That will show us what each field is called. If you double click it, it will pull up a spreadsheet-like view of it. 
 
-For each chart type, we're going to need to do some basic data analysis. For our first one, let's calculate a simple season average. For those of you who have worked with databases, this is a simple group and average. If you're a spreadsheet user, you can do this with crosstabs. 
+For each chart type, we're going to need to do some basic data analysis. For our first one, let's calculate a simple metric for how games are going for a team: The score differential. Win big = Good. Lose big = Bad.
 
-We're going to do a couple of things here. First we're going to tell R what data we're working with. Then we're going to use an operator that I find it's easiest to just think of saying And Now Do This. So we're going to give it our data, group it by the team, and then summarize it with an average. We'll talk it through. 
+We're going to do a couple of things here. First we're going to tell R what data we're working with. Then we're going to use an operator that I find it's easiest to just think of saying And Now Do This. So we're going to give it our data, and calculate a new field. We'll talk it through. 
 
 ```{r}
-logs %>% group_by(Team) %>% summarize(average_3P_attempts = mean(Team3PA))
+logs %>% mutate(differential = TeamScore-OpponentScore)
 ```
 
 If we want to see it sorted, we can add another `%>%` at the end and then use `dplyr`'s version of sort, which is arrange. 
 
 ```{r}
-logs %>% group_by(Team) %>% summarize(average_3P_attempts = mean(Team3PA)) %>% arrange(desc(average_3P_attempts))
+logs %>% 
+  mutate(differential = TeamScore-OpponentScore) %>%
+  arrange(desc(differential))
 ```
+So what this says is that the biggest blowout game in college basketball this season was Lamar beating Howard Payne by 89(!).
 
 Now we need to save this as a new dataframe. 
 
 ```{r}
-logs %>% group_by(Team) %>% summarize(average_3P_attempts = mean(Team3PA)) %>% arrange(desc(average_3P_attempts)) -> top_shooters
+logs %>% 
+  mutate(differential = TeamScore-OpponentScore) %>%
+  arrange(desc(differential)) -> difflogs
+```
+
+Let's chart a team's season. You can do whatever you want, but I know a good one. A tale of woe. A tale of horrors. A tale of my employer. So we use filter and save that as a new dataframe. Saving to a dataframe can be done on the front end or the back. We did it on the backend last time. Here's how to do it on the front end.
+
+```{r}
+nu <- difflogs %>% filter(Team == "Nebraska Cornhuskers")
 ```
 
 ### 3. Proportion
 
-The first chart we'll produce is a simple bar chart. But we have 353 teams, so it's not that simple.
+The first chart we'll produce is a simple bar chart. We'll use our data we just created. The way ggplot works is you create a canvas to paint on, you give your data a geometry -- a shape -- and then you tell that geometry what data you're using and what the aesthetic is. In this case, the aesthetic is what fields are being used to create the shape. Themes change the look and feel, and we'll get into that later. For now, the basics.
 
 ```{r}
-ggplot() + geom_bar(data=top_shooters, aes(x=Team, weight=average_3P_attempts))
+ggplot() + geom_bar(data=nu, aes(x=Game, weight=differential))
 ```
 
-That's not ... ideal. But wait, didn't we already sort this? Yes, but ggplot ignores the sort. So you have to sort it in ggplot. We do it with `reorder` which takes what you want to reorder and how you want to reorder it. 
-
-```{r}
-ggplot() + geom_bar(data=top_shooters, aes(x=reorder(Team, -average_3P_attempts), weight=average_3P_attempts))
-```
-
-Hmmm. Still not ideal. What if we just want the top teams? We can limit that with our query. 
-
-```{r}
-top_10_shooters <- logs %>% group_by(Team) %>% summarize(average_3P_attempts = mean(Team3PA)) %>% arrange(desc(average_3P_attempts)) %>% top_n(10)
-```
-
-```{r}
-ggplot() + geom_bar(data=top_10_shooters, aes(x=reorder(Team, -average_3P_attempts), weight=average_3P_attempts))
-```
-
-Hmm. Still not ideal. We could manipulate the text -- we'll do that later -- but a simple fix is to flip the coordinate plane.
-
-```{r}
-ggplot() + geom_bar(data=top_10_shooters, aes(x=reorder(Team, -average_3P_attempts), weight=average_3P_attempts)) + coord_flip()
-```
+If you're a Nebraska fan ... ouch. Things have not gone well lately. 
 
 ### 4. Change over time 
 
@@ -142,7 +133,7 @@ Better, but does it tell us much? Eh.
 
 Let's look at step charts, a form that tracks cumulative change over time. 
 
-Nebraska, at one time, was one of the best basketball teams in the Big Ten. And then, in January, it went to hell and a handbasket. You can really see it in the cumulative point differential on the season. 
+Nebraska, at one time, was one of the best basketball teams in the Big Ten. And then, in January, it went to hell in a handbasket. You can really see it in the cumulative point differential on the season. 
 
 First we need to calculate the game differential then we need to calculate the cumulative differential for each team. We can do that in one step. 
 
