@@ -9,8 +9,7 @@ Goals for this session:
 2. Importing data and basic manipulations
 3. Proportion
 4. Change over time
-5. Comparisons
-6. Finishing touches
+5. Finishing touches
 
 ### 1. Introduction and finding data
  
@@ -59,7 +58,7 @@ logs %>% group_by(Team) %>% summarize(average_3P_attempts = mean(Team3PA)) %>% a
 Now we need to save this as a new dataframe. 
 
 ```{r}
-top_shooters <- logs %>% group_by(Team) %>% summarize(average_3P_attempts = mean(Team3PA)) %>% arrange(desc(average_3P_attempts))
+logs %>% group_by(Team) %>% summarize(average_3P_attempts = mean(Team3PA)) %>% arrange(desc(average_3P_attempts)) -> top_shooters
 ```
 
 ### 3. Proportion
@@ -94,6 +93,104 @@ ggplot() + geom_bar(data=top_10_shooters, aes(x=reorder(Team, -average_3P_attemp
 
 ### 4. Change over time 
 
-So 
+There's two ways to look at change over time -- there's the game to game change, and then there's the cumulative change over the course of a season. 
 
+Let's look at how the Big Ten has shot over the course of the season. 
+
+```{r}
+logs %>% filter(Conference == "Big Ten") -> big10
+```
+
+So each game has a date and a TeamFGPCT, which is always that team regardless of home or away. 
+
+```{r}
+ggplot() + geom_line(data=big10, aes(x=Date, y=TeamFGPCT, group=Team))
+```
+
+Ah, the hairball. How to fix this? Layering. So let's pick some teams to focus on. Who are the best shooting teams in the Big Ten? This is knowable.
+
+```{r}
+big10 %>% 
+  group_by(Team) %>% 
+  summarize(
+    season_attempts=sum(TeamFGA), 
+    season_fg = sum(TeamFG), 
+    season_pct = season_fg/season_attempts
+    ) %>% 
+  arrange(desc(season_pct))
+```
+
+So Michigan State is best, Penn State is worst. Let's chart how their two seasons have gone. 
+
+```{r}
+ms <- big10 %>% filter(Team == "Michigan State Spartans")
+ps <- big10 %>% filter(Team == "Penn State Nittany Lions")
+```
+
+Now let's layer in our data and use colors to bring some to the front and some to the back.
+
+```{r}
+ggplot() + 
+  geom_line(data=big10, aes(x=Date, y=TeamFGPCT, group=Team), color="light grey") +
+  geom_line(data=ms, aes(x=Date, y=TeamFGPCT, group=Team), color="dark green") +
+  geom_line(data=ps, aes(x=Date, y=TeamFGPCT, group=Team), color="dark blue")
+```
+
+```{r}
+big10cumulative <- big10 %>% group_by(Team) %>% mutate(fgs = cumsum(TeamFG))
+
+msc <- big10cumulative %>% filter(Team == "Michigan State Spartans")
+psc <- big10cumulative %>% filter(Team == "Penn State Nittany Lions")
+
+```
+
+```{r}
+ggplot() + 
+  geom_step(data=big10cumulative, aes(x=Date, y=fgs, group=Team), color="light grey") + 
+  geom_step(data=msc, aes(x=Date, y=fgs, group=Team), color="dark green") +
+  geom_step(data=psc, aes(x=Date, y=fgs, group=Team), color="dark blue")
+```
+
+### 5. Finishing touches
+
+There is an almost limitless number of thing we can change with ggplot to make it look different. Every piece of the chart, every element, every font, face and size we can change. The number of choices are overwhelming. So let's start simple. Let's just add some text to this mess.
+
+```{r}
+ggplot() + 
+  geom_step(data=big10cumulative, aes(x=Date, y=fgs, group=Team), color="light grey") + 
+  geom_step(data=msc, aes(x=Date, y=fgs, group=Team), color="dark green") +
+  geom_step(data=psc, aes(x=Date, y=fgs, group=Team), color="dark blue") +
+   labs(x="Date", y="Baskets made", title="A tale of two seasons", subtitle="Michigan State and Penn State went it different directions and sit at opposite ends of the Big Ten Tournament", caption="Source: Sports-Reference.com | By Matt Waite") 
+```
+
+There's a designer somewhere having a conniption about this. Let's create some text heirarchy here. 
+
+```{r}
+ggplot() + 
+  geom_step(data=big10cumulative, aes(x=Date, y=fgs, group=Team), color="light grey") + 
+  geom_step(data=msc, aes(x=Date, y=fgs, group=Team), color="dark green") +
+  geom_step(data=psc, aes(x=Date, y=fgs, group=Team), color="dark blue") +
+   labs(x="Date", y="Baskets made", title="A tale of two seasons", subtitle="Michigan State and Penn State sit at opposite ends of the Big Ten Tournament.", caption="Source: Sports-Reference.com | By Matt Waite") +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size=9)
+  )
+```
+
+Better. How about we get rid of some things. The label on the bottom isn't needed. Those labels don't need to be so large. And the tick marks next to the grid lines drive me nuts. 
+
+```{r}
+ggplot() + 
+  geom_step(data=big10cumulative, aes(x=Date, y=fgs, group=Team), color="light grey") + 
+  geom_step(data=msc, aes(x=Date, y=fgs, group=Team), color="dark green") +
+  geom_step(data=psc, aes(x=Date, y=fgs, group=Team), color="dark blue") +
+   labs(x="Team", y="Baskets made", title="A tale of two seasons", subtitle="Michigan State and Penn State sit at opposite ends of the Big Ten Tournament", caption="Source: Sports-Reference.com | By Matt Waite") +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size=10),
+    axis.title.x = element_blank(),
+    axis.text = element_text(size = 7),
+    axis.ticks = element_blank()
+  )
+```
 
